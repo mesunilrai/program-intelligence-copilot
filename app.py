@@ -55,44 +55,18 @@ Actions must be concise, ordered, and specific.
 
 DEMO_RESULT = {
     "executive_summary": "Development is 80% complete with four weeks remaining. The mandatory security review has not started and requires two weeks, while a vendor API issue may take up to one week to resolve. The remaining runway is compressed with limited contingency.",
-    "program_health": {
-        "status": "Amber",
-        "reason": "Known work consumes a significant portion of the remaining runway and leaves limited schedule contingency."
-    },
-    "delivery_intelligence": {
-        "timeline_assessment": "Four weeks remain; the two-week security review and up-to-one-week vendor issue consume at least three weeks before considering remaining development and integration testing.",
-        "schedule_pressure": "High",
-        "contingency_assessment": "Limited. Parallel execution may reduce pressure, but the input does not establish whether the work can fully overlap."
-    },
+    "program_health": {"status": "Amber", "reason": "Known work consumes a significant portion of the remaining runway and leaves limited schedule contingency."},
+    "delivery_intelligence": {"timeline_assessment": "Four weeks remain; the two-week security review and up-to-one-week vendor issue consume at least three weeks before considering remaining development and integration testing.", "schedule_pressure": "High", "contingency_assessment": "Limited. Parallel execution may reduce pressure, but the input does not establish whether the work can fully overlap."},
     "risks": [
         {"risk": "Security review has not started", "impact": "Could delay go-live if it cannot complete within the remaining runway.", "mitigation": "Start immediately and confirm prerequisites and lead time."},
         {"risk": "Vendor API issue remains unresolved", "impact": "May consume up to one week and affect downstream testing.", "mitigation": "Obtain a committed resolution date and confirm whether it blocks testing."}
     ],
     "blockers": ["Security review is not yet scheduled.", "Vendor API issue is unresolved."],
-    "dependencies": [
-        {"dependency": "Security team", "why_it_matters": "Two-week mandatory review lead time."},
-        {"dependency": "Vendor", "why_it_matters": "API resolution may take up to one week."}
-    ],
-    "recommended_next_actions": [
-        "Start the security review immediately.",
-        "Get a committed vendor resolution date.",
-        "Confirm which activities can run in parallel and quantify remaining contingency.",
-        "Set an early go/no-go checkpoint for the launch date."
-    ],
-    "leadership_attention": {
-        "decision_or_escalation": "Escalate vendor resolution and confirm whether the launch runway remains achievable.",
-        "why_now": "Known work already consumes most of the four-week window."
-    },
-    "facts": [
-        "Development is 80% complete.",
-        "Four weeks remain before go-live.",
-        "Security review requires two weeks and has not started.",
-        "Vendor API resolution may take up to one week."
-    ],
-    "inferences": [
-        "The remaining schedule has limited contingency.",
-        "Parallel execution may be required to protect the launch date."
-    ]
+    "dependencies": [{"dependency": "Security team", "why_it_matters": "Two-week mandatory review lead time."}, {"dependency": "Vendor", "why_it_matters": "API resolution may take up to one week."}],
+    "recommended_next_actions": ["Start the security review immediately.", "Get a committed vendor resolution date.", "Confirm which activities can run in parallel and quantify remaining contingency.", "Set an early go/no-go checkpoint for the launch date."],
+    "leadership_attention": {"decision_or_escalation": "Escalate vendor resolution and confirm whether the launch runway remains achievable.", "why_now": "Known work already consumes most of the four-week window."},
+    "facts": ["Development is 80% complete.", "Four weeks remain before go-live.", "Security review requires two weeks and has not started.", "Vendor API resolution may take up to one week."],
+    "inferences": ["The remaining schedule has limited contingency.", "Parallel execution may be required to protect the launch date."]
 }
 
 
@@ -108,10 +82,7 @@ def analyze_with_groq(update: str) -> dict[str, Any]:
         model=DEFAULT_MODEL,
         temperature=0.1,
         response_format={"type": "json_object"},
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": update[:12000]},
-        ],
+        messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": update[:12000]}],
     )
     result = json.loads(response.choices[0].message.content)
     validate_result(result)
@@ -119,11 +90,7 @@ def analyze_with_groq(update: str) -> dict[str, Any]:
 
 
 def validate_result(result: dict[str, Any]) -> None:
-    required = {
-        "executive_summary", "program_health", "delivery_intelligence", "risks",
-        "blockers", "dependencies", "recommended_next_actions",
-        "leadership_attention", "facts", "inferences"
-    }
+    required = {"executive_summary", "program_health", "delivery_intelligence", "risks", "blockers", "dependencies", "recommended_next_actions", "leadership_attention", "facts", "inferences"}
     missing = required - result.keys()
     if missing:
         raise ValueError(f"Model response is missing fields: {', '.join(sorted(missing))}")
@@ -133,15 +100,35 @@ def validate_result(result: dict[str, Any]) -> None:
 
 def _status_class(value: str) -> str:
     normalized = value.lower()
-    if normalized == "red":
+    if normalized in {"red", "high", "critical"}:
         return "red"
     if normalized in {"amber", "medium", "moderate"}:
         return "amber"
-    if normalized in {"green", "low"}:
+    if normalized == "green":
         return "green"
-    if normalized in {"high", "critical"}:
-        return "red"
     return "neutral"
+
+
+def _contingency_class(value: str) -> str:
+    normalized = value.lower()
+    if any(term in normalized for term in ["none", "zero", "low", "minimal", "limited"]):
+        return "red"
+    if any(term in normalized for term in ["medium", "moderate"]):
+        return "amber"
+    if any(term in normalized for term in ["high", "adequate", "healthy", "strong"]):
+        return "green"
+    return "neutral"
+
+
+def _pressure_width(value: str) -> int:
+    normalized = value.lower()
+    if normalized in {"high", "critical"}:
+        return 90
+    if normalized in {"medium", "moderate", "amber"}:
+        return 60
+    if normalized in {"low", "green"}:
+        return 30
+    return 45
 
 
 def render_snapshot(result: dict[str, Any]) -> None:
@@ -157,7 +144,7 @@ def render_snapshot(result: dict[str, Any]) -> None:
     cards = [
         ("Program Health", status, _status_class(status)),
         ("Schedule Pressure", pressure, _status_class(pressure)),
-        ("Contingency", contingency, _status_class("low" if any(x in contingency.lower() for x in ["low", "limited", "minimal", "none"]) else "neutral")),
+        ("Contingency", contingency, _contingency_class(contingency)),
         ("Blockers", str(blockers), "red" if blockers else "green"),
     ]
     card_html = "<div class='snapshot-grid'>"
@@ -165,20 +152,13 @@ def render_snapshot(result: dict[str, Any]) -> None:
         card_html += f"<div class='snapshot-card'><div class='snapshot-label'>{label}</div><div class='snapshot-value {css_class}'>{value}</div></div>"
     card_html += "</div>"
     st.markdown(card_html, unsafe_allow_html=True)
-
-    st.markdown(
-        f"<div class='attention-strip'><strong>Dependencies:</strong> {dependencies} &nbsp; • &nbsp; "
-        f"<strong>Health rationale:</strong> {health.get('reason', 'Not established')}</div>",
-        unsafe_allow_html=True,
-    )
+    st.markdown(f"<div class='attention-strip'><strong>Dependencies:</strong> {dependencies} &nbsp; • &nbsp; <strong>Health rationale:</strong> {health.get('reason', 'Not established')}</div>", unsafe_allow_html=True)
 
 
 def render_timeline_visual(result: dict[str, Any]) -> None:
     delivery = result["delivery_intelligence"]
     facts = result.get("facts", [])
-    timeline_facts = [fact for fact in facts if any(
-        token in fact.lower() for token in ["day", "week", "month", "deadline", "launch", "go-live"]
-    )]
+    timeline_facts = [fact for fact in facts if any(token in fact.lower() for token in ["day", "week", "month", "deadline", "launch", "go-live"])]
 
     st.subheader("⏱️ Timeline Pressure")
     if timeline_facts:
@@ -189,12 +169,9 @@ def render_timeline_visual(result: dict[str, Any]) -> None:
 
     pressure = delivery.get("schedule_pressure", "Not established")
     contingency = delivery.get("contingency_assessment", "Not established")
-    st.markdown(
-        f"<div class='pressure-bar'><div class='pressure-fill {_status_class(pressure)}'></div></div>"
-        f"<div class='pressure-caption'><strong>Schedule pressure:</strong> {pressure} &nbsp; • &nbsp; "
-        f"<strong>Contingency:</strong> {contingency}</div>",
-        unsafe_allow_html=True,
-    )
+    width = _pressure_width(pressure)
+    pressure_class = _status_class(pressure)
+    st.markdown(f"<div class='pressure-bar'><div class='pressure-fill {pressure_class}' style='width:{width}%'></div></div><div class='pressure-caption'><strong>Schedule pressure:</strong> {pressure} &nbsp; • &nbsp; <strong>Contingency:</strong> {contingency}</div>", unsafe_allow_html=True)
 
 
 def render_result(result: dict[str, Any]) -> None:
@@ -202,33 +179,21 @@ def render_result(result: dict[str, Any]) -> None:
     delivery = result["delivery_intelligence"]
     leadership = result["leadership_attention"]
 
-    st.markdown(
-        """<style>
-        .snapshot-grid {display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:8px 0 14px;}
-        .snapshot-card {padding:16px;border:1px solid rgba(128,128,128,.28);border-radius:10px;background:rgba(128,128,128,.07);min-height:82px;}
-        .snapshot-label {font-size:13px;opacity:.72;margin-bottom:8px;}
-        .snapshot-value {font-size:20px;font-weight:700;line-height:1.25;}
-        .snapshot-value.red {color:#ff6b6b;}.snapshot-value.amber {color:#f0ad4e;}.snapshot-value.green {color:#5cb85c;}.snapshot-value.neutral {color:inherit;}
-        .attention-strip {padding:12px 14px;border-left:4px solid rgba(128,128,128,.55);background:rgba(128,128,128,.07);border-radius:6px;margin-bottom:16px;}
-        .timeline-item {padding:7px 10px;margin:5px 0;border-left:3px solid rgba(128,128,128,.45);background:rgba(128,128,128,.05);border-radius:4px;}
-        .pressure-bar {height:10px;background:rgba(128,128,128,.18);border-radius:8px;overflow:hidden;margin-top:12px;}
-        .pressure-fill {height:100%;width:82%;border-radius:8px;}
-        .pressure-fill.red {background:#d9534f;}.pressure-fill.amber {background:#f0ad4e;}.pressure-fill.green {background:#5cb85c;}.pressure-fill.neutral {background:#888;}
-        .pressure-caption {font-size:13px;opacity:.8;margin:7px 0 16px;}
-        @media (max-width: 800px) {.snapshot-grid {grid-template-columns:repeat(2,1fr);}}
-        </style>""",
-        unsafe_allow_html=True,
-    )
+    st.markdown("""<style>
+    .snapshot-grid {display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:8px 0 14px;}
+    .snapshot-card {padding:16px;border:1px solid rgba(128,128,128,.28);border-radius:10px;background:rgba(128,128,128,.07);min-height:82px;}
+    .snapshot-label {font-size:13px;opacity:.72;margin-bottom:8px;}
+    .snapshot-value {font-size:20px;font-weight:700;line-height:1.25;}
+    .snapshot-value.red {color:#ff6b6b;}.snapshot-value.amber {color:#f0ad4e;}.snapshot-value.green {color:#5cb85c;}.snapshot-value.neutral {color:inherit;}
+    .attention-strip {padding:12px 14px;border-left:4px solid rgba(128,128,128,.55);background:rgba(128,128,128,.07);border-radius:6px;margin-bottom:16px;}
+    .timeline-item {padding:7px 10px;margin:5px 0;border-left:3px solid rgba(128,128,128,.45);background:rgba(128,128,128,.05);border-radius:4px;}
+    .pressure-bar {height:10px;background:rgba(128,128,128,.18);border-radius:8px;overflow:hidden;margin-top:12px;}
+    .pressure-fill {height:100%;border-radius:8px;}.pressure-fill.red {background:#d9534f;}.pressure-fill.amber {background:#f0ad4e;}.pressure-fill.green {background:#5cb85c;}.pressure-fill.neutral {background:#888;}
+    .pressure-caption {font-size:13px;opacity:.8;margin:7px 0 16px;}
+    @media (max-width: 800px) {.snapshot-grid {grid-template-columns:repeat(2,1fr);}}
+    </style>""", unsafe_allow_html=True)
 
     render_snapshot(result)
-
-    status_class = _status_class(health["status"])
-    st.markdown(
-        f"<div class='attention-strip'><strong>Program Health: </strong>"
-        f"<span class='snapshot-value {status_class}'>{health['status']}</span>"
-        f"<br><span>{health.get('reason', 'Not established')}</span></div>",
-        unsafe_allow_html=True,
-    )
 
     st.subheader("Executive Summary")
     st.write(result["executive_summary"])
@@ -257,11 +222,9 @@ def render_result(result: dict[str, Any]) -> None:
                 st.write(f"Mitigation: {item.get('mitigation', 'Not specified')}")
             else:
                 st.write(item)
-
         st.subheader("🚧 Blockers")
         for item in result["blockers"]:
             st.write(f"- {item}")
-
         st.subheader("📌 Facts")
         for item in result["facts"]:
             st.write(f"- {item}")
@@ -274,11 +237,9 @@ def render_result(result: dict[str, Any]) -> None:
                 st.write(item.get("why_it_matters", ""))
             else:
                 st.write(f"- {item}")
-
         st.subheader("🎯 Recommended Next Actions")
         for index, item in enumerate(result["recommended_next_actions"], start=1):
             st.write(f"{index}. {item}")
-
         st.subheader("🧩 AI Inferences")
         for item in result["inferences"]:
             st.write(f"- {item}")
@@ -292,21 +253,14 @@ st.title("🧭 Program Intelligence Copilot")
 st.caption("AI-assisted program analysis for Technical Program Managers")
 
 with st.expander("What this demonstrates", expanded=False):
-    st.write(
-        "This portfolio application converts an unstructured program update into "
-        "program health, delivery intelligence, risks, blockers, dependencies, "
-        "actions, and leadership attention. The TPM remains accountable for validation and decisions."
-    )
+    st.write("This portfolio application converts an unstructured program update into program health, delivery intelligence, risks, blockers, dependencies, actions, and leadership attention. The TPM remains accountable for validation and decisions.")
 
 sample = """Development is 80% complete with 4 weeks remaining before go-live.
 The security review has not started and requires 2 weeks.
 A vendor API issue is unresolved and may take up to 1 week to fix.
 The team still needs to complete final development and integration testing."""
 
-update = st.text_area(
-    "Paste a program update", value=sample, height=180, max_chars=12000,
-    help="Use synthetic or non-confidential information for this portfolio demo."
-)
+update = st.text_area("Paste a program update", value=sample, height=180, max_chars=12000, help="Use synthetic or non-confidential information for this portfolio demo.")
 
 if st.button("Analyze Program", type="primary", use_container_width=False):
     if not update.strip():

@@ -111,7 +111,7 @@ def _status_class(value: str) -> str:
 
 def _contingency_class(value: str) -> str:
     normalized = value.lower()
-    if any(term in normalized for term in ["none", "zero", "low", "minimal", "limited"]):
+    if any(term in normalized for term in ["none", "zero", "low", "minimal", "limited", "insufficient", "inadequate"]):
         return "red"
     if any(term in normalized for term in ["medium", "moderate"]):
         return "amber"

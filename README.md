@@ -1,56 +1,47 @@
 # Program Intelligence Copilot
 
-> An AI-assisted technical program management application that turns unstructured program updates into structured delivery intelligence.
+> **AI-assisted program intelligence for Technical Program Managers**
+>
+> Turns an unstructured program update into an executive-ready view of **program health, delivery pressure, risks, blockers, dependencies, actions, and leadership attention**.
 
-[![Status](https://img.shields.io/badge/status-portfolio%20V1-blue)](https://github.com/mesunilrai/program-intelligence-copilot)
+**Portfolio V1 • Python • Streamlit • Groq LLM • Structured JSON • Human-in-the-loop**
 
 ## Table of Contents
 
 - [Why this project](#why-this-project)
-- [What it does](#what-it-does)
+- [What it demonstrates](#what-it-demonstrates)
 - [The TPM problem](#the-tpm-problem)
 - [How it works](#how-it-works)
+- [Key capabilities](#key-capabilities)
 - [Example](#example)
-- [AI approach](#ai-approach)
+- [AI approach and guardrails](#ai-approach-and-guardrails)
 - [Architecture](#architecture)
-- [Why it matters](#why-it-matters)
-- [Security and responsible AI](#security-and-responsible-ai)
+- [Technology](#technology)
+- [Responsible AI](#responsible-ai)
 - [Limitations](#limitations)
-- [Roadmap](#roadmap)
+- [Run locally](#run-locally)
+- [Project status](#project-status)
 - [Portfolio context](#portfolio-context)
 
 ## Why this project
 
-Technical program managers routinely receive fragmented updates from engineering, product, vendors, security, operations, and other stakeholders. The difficult part is not producing another summary—it is identifying **what changed, what matters, what is at risk, and what needs a decision**.
+Technical Program Managers routinely receive fragmented updates from engineering, product, vendors, security, operations, and other stakeholders. The difficult part is not producing another summary—it is identifying **what changed, what matters, what is at risk, what depends on something else, and what needs a decision**.
 
-Program Intelligence Copilot explores how an AI application can help a TPM move from raw updates to structured program intelligence while keeping the TPM responsible for validation and decisions.
+Program Intelligence Copilot explores how AI can shorten the path from a raw program update to useful delivery intelligence while keeping the TPM accountable for validation and decisions.
 
-## What it does
+## What it demonstrates
 
-The portfolio V1 is designed around a simple workflow:
+This portfolio project demonstrates practical application of AI to TPM work:
 
-```text
-Unstructured Program Update
-            ↓
-      AI-assisted Analysis
-            ↓
- ┌──────────┼───────────┐
- ↓          ↓           ↓
-Health     Risks    Dependencies
- ↓          ↓           ↓
-Blockers   Impact    Actions
-            ↓
-     Leadership Attention
-```
-
-The target output is a concise program view covering:
-
-- **Executive summary** — what changed and why it matters
-- **Program health** — overall delivery signal with rationale
-- **Risks** — potential future events, impact, and mitigation
-- **Blockers** — issues currently preventing progress
-- **Dependencies** — teams, systems, vendors, or decisions required
-- **Recommended next actions** — concrete actions and priorities
+- Converts unstructured program updates into structured delivery intelligence
+- Assesses overall **program health** with an evidence-based rationale
+- Surfaces **risks, blockers, and dependencies**
+- Evaluates **schedule pressure and delivery contingency** when timing information supports it
+- Produces prioritized **recommended next actions**
+- Identifies issues requiring **leadership attention or escalation**
+- Separates **explicit facts from AI inferences** so the output can be reviewed
+- Uses guardrails to reduce unsupported risks, blockers, and dependencies
+- Presents the result as an executive-friendly dashboard rather than a generic chatbot response
 
 ## The TPM problem
 
@@ -60,20 +51,74 @@ A typical status update might say:
 
 A useful TPM response should not simply repeat those facts. It should identify the delivery implication:
 
-**The schedule is Amber because the remaining security review, vendor resolution, development, integration, and testing consume most of the remaining runway with little contingency.**
+**The schedule is under pressure because known work consumes most of the remaining runway, leaving limited contingency for additional defects or delays.**
 
 That distinction—**information → implication → action**—is the core product idea.
 
 ## How it works
 
-1. **Capture** — TPM provides an unstructured program update.
-2. **Interpret** — the AI identifies delivery signals, entities, constraints, and relationships.
-3. **Structure** — signals are organized into health, risks, blockers, dependencies, and actions.
-4. **Reason** — the application evaluates schedule pressure, dependencies, and potential impact where the available information supports it.
-5. **Communicate** — results are presented in an executive-friendly format.
-6. **Review** — the TPM validates assumptions, fills information gaps, and owns the final decision.
+```text
+Unstructured Program Update
+            ↓
+      LLM-assisted Analysis
+            ↓
+   Structured JSON Validation
+            ↓
+ ┌──────────┼───────────┐
+ ↓          ↓           ↓
+Health     Risks    Dependencies
+ ↓          ↓           ↓
+Delivery   Blockers   Actions
+Intelligence            ↓
+                 Leadership Attention
+            ↓
+      Executive Snapshot
+```
 
-The application should distinguish **facts provided by the user** from **AI interpretation or inference**. Where an important relationship is unknown, the system should surface it as an uncertainty rather than silently inventing one.
+The application also keeps **facts** and **AI inferences** separate, allowing the TPM to see what came directly from the update versus what the model concluded from those facts.
+
+## Key capabilities
+
+### 📊 Executive Snapshot
+
+Provides an at-a-glance view of:
+
+- Program health
+- Schedule pressure
+- Contingency
+- Blocker count
+- Dependency count and health rationale
+
+### 🧠 Delivery Intelligence
+
+Analyzes the delivery situation using available timing signals, including remaining runway, known activity duration, sequencing, schedule pressure, and contingency.
+
+### ⚠️ Risk and dependency intelligence
+
+For identified risks, the application presents:
+
+- Risk
+- Impact
+- Mitigation
+
+Dependencies include why the dependency matters to delivery.
+
+### 🎯 Recommended actions
+
+Turns identified issues into concise, prioritized next actions instead of stopping at a summary.
+
+### 🚨 Leadership attention
+
+Highlights the decision or escalation that may require leadership attention and explains why it matters now.
+
+### 🔎 Explainability
+
+The output explicitly separates:
+
+- **Facts** — information extracted from the supplied update
+- **AI Inferences** — conclusions derived from those facts
+
+This is intentional. The goal is decision support, not opaque automation.
 
 ## Example
 
@@ -81,139 +126,172 @@ The application should distinguish **facts provided by the user** from **AI inte
 
 ```text
 Development is 80% complete with 4 weeks remaining before go-live.
-Security review has not started and normally requires 2 weeks.
+Security review has not started and requires 2 weeks.
 A vendor API issue is unresolved and may take up to 1 week to fix.
+The team still needs to complete final development and integration testing.
 ```
 
-### Example output
+### Intended output
 
-**Program Health: Amber — At Risk**
+**Program Health: Amber**
 
-**Why:** The mandatory security review consumes half of the remaining runway. The vendor issue and remaining development/testing create a compressed schedule with limited contingency.
+**Delivery implication:** The remaining work consumes a significant portion of the four-week runway, creating high schedule pressure and limited contingency.
 
-**Critical attention:**
+**Recommended attention:**
 
 1. Start the security review immediately.
-2. Obtain a firm vendor resolution date.
-3. Confirm whether the API issue blocks or can run in parallel with security testing.
+2. Obtain a committed vendor resolution date.
+3. Confirm which activities can run in parallel.
 4. Establish an early go/no-go checkpoint.
 
-The example demonstrates the intended reasoning pattern; it is not presented as evidence that the application can make autonomous delivery decisions.
+The example illustrates the intended reasoning pattern. It is not presented as evidence that the application can make autonomous delivery decisions.
 
-## AI approach
+## AI approach and guardrails
 
 The project is intentionally focused on **decision support rather than autonomous program management**.
-
-Key design principles:
 
 | Principle | Application |
 |---|---|
 | Evidence first | Base conclusions on information supplied in the program update. |
-| Explicit uncertainty | Surface missing or ambiguous dependencies instead of guessing. |
-| Structured output | Use predictable sections so results can be consumed consistently. |
-| Action orientation | Convert observations into practical next actions. |
-| Human accountability | TPM reviews and owns the final interpretation and decision. |
-| Evaluation | Test outputs against representative scenarios, not just whether the response sounds good. |
+| Preserve explicit facts | Do not contradict information explicitly provided by the user. |
+| Avoid unsupported inference | Do not create a risk, blocker, or dependency simply because information is unknown. |
+| Explicit uncertainty | Surface uncertainty when the available evidence is insufficient. |
+| Structured output | Use predictable fields for consistent rendering and validation. |
+| Action orientation | Convert meaningful observations into practical next actions. |
+| Human accountability | The TPM reviews and owns the final interpretation and decision. |
+
+The application validates the expected JSON structure before rendering an AI response. If the AI provider is unavailable, the portfolio demo can fall back to a clearly identified built-in sample analysis rather than presenting that sample as AI-generated analysis of the user's input.
 
 ## Architecture
 
-The intended V1 architecture is deliberately simple:
+The implemented V1 architecture is deliberately lightweight:
 
 ```text
-┌──────────────────────┐
-│ TPM / Program Update │
-└──────────┬───────────┘
-           ↓
-┌──────────────────────┐
-│ Application / UI     │
-└──────────┬───────────┘
-           ↓
-┌──────────────────────┐
-│ Analysis API         │
-└──────────┬───────────┘
-           ↓
-┌──────────────────────┐
-│ LLM / AI Reasoning   │
-└──────────┬───────────┘
-           ↓
-┌──────────────────────┐
-│ Structured Program   │
-│ Intelligence Output  │
-└──────────────────────┘
+┌─────────────────────────┐
+│ Streamlit User Interface│
+└────────────┬────────────┘
+             ↓
+┌─────────────────────────┐
+│ TPM Program Update      │
+└────────────┬────────────┘
+             ↓
+┌─────────────────────────┐
+│ Groq LLM Analysis       │
+│ + TPM System Prompt     │
+└────────────┬────────────┘
+             ↓
+┌─────────────────────────┐
+│ Structured JSON Output  │
+│ + Schema Validation     │
+└────────────┬────────────┘
+             ↓
+┌─────────────────────────┐
+│ Executive Dashboard     │
+│ + Decision Support      │
+└─────────────────────────┘
 ```
 
-Implementation details will evolve as the application is hardened. The architecture documentation records the design assumptions separately from capabilities that have been implemented and tested.
+The application is intentionally small enough to understand and run locally while demonstrating the product and reasoning layer of an AI-enabled TPM solution.
 
-## Why it matters
+## Technology
 
-For a TPM, the potential value is not simply saving time writing status reports. The larger opportunity is to improve the **signal-to-decision path**:
+- **Python** — application logic
+- **Streamlit** — interactive web UI
+- **Groq API / LLM** — AI-assisted program analysis
+- **Structured JSON** — predictable model output
+- **Prompt guardrails** — evidence, uncertainty, and decision-support controls
 
-```text
-Many Updates
-     ↓
-Relevant Signals
-     ↓
-Delivery Implications
-     ↓
-Prioritized Actions
-     ↓
-Better Human Decisions
-```
+The differentiator is not the framework choice; it is how the AI capability is applied to a concrete TPM workflow.
 
-This is the area where I am interested in applying AI to real TPM work: reducing cognitive overhead while preserving judgment, context, and accountability.
+## Responsible AI
 
-## Security and responsible AI
+This is a portfolio application using synthetic or non-confidential information.
 
-The project is intended as a portfolio application using synthetic or non-confidential information.
-
-Key considerations include:
+Important usage boundaries:
 
 - Do not submit proprietary or confidential company information to an external model without appropriate authorization.
-- Avoid exposing credentials, tokens, personal data, or sensitive architecture details in prompts or logs.
-- Apply authentication and rate limiting before exposing an AI endpoint publicly.
+- Do not expose API keys, credentials, personal data, or sensitive architecture information in prompts or logs.
 - Treat model output as decision support, not an authoritative source of truth.
-- Make uncertainty and missing information visible to the user.
-- Validate model output before using it in consequential program decisions.
-
-See [`docs/security.md`](docs/security.md) for the current security checklist.
+- Validate AI output before using it for consequential program decisions.
+- Production deployment would require appropriate authentication, privacy controls, rate limiting, observability, cost controls, and reliability mechanisms.
 
 ## Limitations
 
-This portfolio V1 intentionally does **not** claim autonomous program management or guaranteed factual correctness.
+This V1 intentionally does **not** claim autonomous program management or guaranteed factual correctness.
 
 Current limitations include:
 
 - Model output can be incomplete or incorrect.
 - Schedule reasoning depends on the quality and completeness of the supplied information.
-- The system cannot know hidden dependencies that were not provided.
-- Risk severity and program health require human context.
-- Production use would require stronger controls for authentication, privacy, observability, cost, and reliability.
+- The system cannot identify hidden dependencies that were not provided.
+- Risk severity and program health still require human context.
+- The current application does not maintain historical program state.
+- It is not integrated with enterprise systems such as Jira, Azure DevOps, Smartsheet, or similar delivery platforms.
+- Production use would require stronger security, privacy, reliability, and operational controls.
 
-## Roadmap
+## Run locally
 
-### V1 — Portfolio foundation
+### 1. Clone the repository
 
-- [x] Define the TPM problem and target workflow
-- [x] Establish structured program-intelligence output
-- [x] Document AI principles and responsible-use boundaries
-- [ ] Finalize application implementation and tested demo
+```bash
+git clone https://github.com/mesunilrai/program-intelligence-copilot.git
+cd program-intelligence-copilot
+```
 
-### V1.1 — Evaluation
+### 2. Create and activate a virtual environment
 
-- Representative synthetic program scenarios
-- Expected-output criteria
-- Regression evaluation
-- Failure-mode analysis
+```bash
+python -m venv .venv
+```
 
-### Future
+Windows:
 
-- Historical trend analysis
-- Dependency graph visualization
-- Change-impact analysis
-- Decision tracking
-- Program-level portfolio rollups
+```bash
+.venv\Scripts\activate
+```
 
-Features will be added only where they provide meaningful TPM value; the project is intentionally not designed to become a generic AI chatbot.
+### 3. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Configure the Groq API key
+
+Set `GROQ_API_KEY` as an environment variable. Do not commit the key to GitHub.
+
+Windows Command Prompt:
+
+```cmd
+set GROQ_API_KEY=your_key_here
+```
+
+### 5. Run the application
+
+```bash
+streamlit run app.py
+```
+
+If no API key is configured, the application can demonstrate the portfolio workflow using its clearly labelled built-in sample analysis.
+
+## Project status
+
+### V1 — Portfolio MVP ✅
+
+- [x] TPM problem and target workflow defined
+- [x] AI-assisted structured analysis
+- [x] Program health assessment
+- [x] Delivery intelligence and schedule pressure
+- [x] Risk, blocker, and dependency analysis
+- [x] Recommended next actions
+- [x] Leadership attention
+- [x] Facts vs. AI inference separation
+- [x] AI inference guardrails
+- [x] Executive dashboard visualization
+- [x] Local testing across Green, Amber, and Red scenarios
+- [x] Zero-state handling for empty risks, blockers, and dependencies
+
+The MVP is intentionally frozen at this point. Future enhancements will be considered separately rather than expanding the portfolio MVP unnecessarily.
 
 ## Portfolio context
 
@@ -222,7 +300,7 @@ This project complements my **AI TPM Claude Skills** repository rather than dupl
 - **AI TPM Claude Skills** demonstrates reusable AI workflow and reasoning design for TPM activities.
 - **Program Intelligence Copilot** demonstrates the product/application layer: turning an AI-assisted TPM workflow into a usable software experience.
 
-Together they show a broader approach to AI + Technical Program Management across **workflow design, reasoning, product thinking, and application implementation**.
+Together they demonstrate a broader approach to **AI + Technical Program Management** across workflow design, reasoning, product thinking, and application implementation.
 
 ---
 

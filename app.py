@@ -1,9 +1,8 @@
-"""Program Intelligence Copilot - portfolio V1.
+"""Program Intelligence Copilot - portfolio MVP.
 
-A small Streamlit application that turns an unstructured TPM update into
-structured program intelligence using an LLM. The model is optional: when
-no API key is configured, the app provides a transparent demo mode so the
-portfolio remains runnable without credentials.
+Turns an unstructured TPM update into structured program intelligence using
+an LLM. The model is optional: without an API key, the app uses an explicit
+sample-analysis mode so users are not misled about what was analyzed.
 """
 
 import json
@@ -18,70 +17,88 @@ except ImportError:  # pragma: no cover - handled by requirements
     Groq = None
 
 
-st.set_page_config(
-    page_title="Program Intelligence Copilot",
-    page_icon="🧭",
-    layout="wide",
-)
+st.set_page_config(page_title="Program Intelligence Copilot", page_icon="🧭", layout="wide")
 
 DEFAULT_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 SYSTEM_PROMPT = """You are a Technical Program Management intelligence assistant.
-Analyze only the information provided by the user. Do not invent facts.
-Separate stated facts from reasonable inference. If an important relationship
-is unknown, call it out as an uncertainty.
+Analyze only the information provided by the user. Never invent facts.
+Separate explicit facts from AI inference. Identify uncertainty when the
+information is insufficient to make a conclusion.
+
+Think like a senior TPM. In addition to extracting risks and dependencies,
+reason about delivery timing:
+- remaining runway and fixed dates
+- duration of known activities
+- sequencing and parallelism where stated or reasonably inferable
+- critical-path pressure
+- schedule contingency
+- delivery impact if a dependency slips
+
+Do not claim exact critical-path timing unless the input supports it. If timing
+cannot be established, say so explicitly.
 
 Return valid JSON with exactly these keys:
-executive_summary, program_health, risks, blockers, dependencies,
-recommended_next_actions.
+executive_summary, program_health, delivery_intelligence, risks, blockers,
+dependencies, recommended_next_actions, leadership_attention, facts,
+inferences.
 
 program_health must contain status (Green, Amber, or Red) and reason.
-risks, blockers, dependencies, and recommended_next_actions must be arrays.
-Each risk should contain risk, impact, mitigation. Each dependency should
-contain dependency and why_it_matters. Actions should be concise and ordered.
+delivery_intelligence must contain timeline_assessment, schedule_pressure,
+and contingency_assessment.
+risk objects must contain risk, impact, mitigation.
+dependency objects must contain dependency and why_it_matters.
+leadership_attention must contain decision_or_escalation and why_now.
+facts and inferences must be arrays of concise strings.
+Actions must be concise, ordered, and specific.
 """
 
 DEMO_RESULT = {
-    "executive_summary": "Development is 80% complete with four weeks remaining. The mandatory security review has not started and requires two weeks, while a vendor API issue may take up to one week to resolve. The remaining runway is therefore compressed with limited contingency.",
+    "executive_summary": "Development is 80% complete with four weeks remaining. The mandatory security review has not started and requires two weeks, while a vendor API issue may take up to one week to resolve. The remaining runway is compressed with limited contingency.",
     "program_health": {
         "status": "Amber",
-        "reason": "The security review consumes half of the remaining runway, leaving limited time for the vendor fix, remaining development, integration, testing, and retesting."
+        "reason": "Known work consumes a significant portion of the remaining runway and leaves limited schedule contingency."
+    },
+    "delivery_intelligence": {
+        "timeline_assessment": "Four weeks remain; the two-week security review and up-to-one-week vendor issue consume at least three weeks before considering remaining development and integration testing.",
+        "schedule_pressure": "High",
+        "contingency_assessment": "Limited. Parallel execution may reduce pressure, but the input does not establish whether the work can fully overlap."
     },
     "risks": [
-        {
-            "risk": "Security review has not started",
-            "impact": "Could delay go-live if the review cannot complete within the remaining runway.",
-            "mitigation": "Kick off the review immediately and confirm the lead time and review prerequisites."
-        },
-        {
-            "risk": "Vendor API issue remains unresolved",
-            "impact": "May consume up to one week and could affect downstream testing.",
-            "mitigation": "Obtain a firm vendor resolution date and confirm whether it blocks security testing."
-        }
+        {"risk": "Security review has not started", "impact": "Could delay go-live if it cannot complete within the remaining runway.", "mitigation": "Start immediately and confirm prerequisites and lead time."},
+        {"risk": "Vendor API issue remains unresolved", "impact": "May consume up to one week and affect downstream testing.", "mitigation": "Obtain a committed resolution date and confirm whether it blocks testing."}
     ],
-    "blockers": [
-        "Security review is not yet scheduled.",
-        "Vendor API issue is unresolved."
-    ],
+    "blockers": ["Security review is not yet scheduled.", "Vendor API issue is unresolved."],
     "dependencies": [
         {"dependency": "Security team", "why_it_matters": "Two-week mandatory review lead time."},
-        {"dependency": "Vendor", "why_it_matters": "API resolution may take up to one week."},
-        {"dependency": "Development team", "why_it_matters": "20% of development remains."}
+        {"dependency": "Vendor", "why_it_matters": "API resolution may take up to one week."}
     ],
     "recommended_next_actions": [
         "Start the security review immediately.",
         "Get a committed vendor resolution date.",
-        "Confirm whether the vendor fix and security review can run in parallel.",
+        "Confirm which activities can run in parallel and quantify remaining contingency.",
         "Set an early go/no-go checkpoint for the launch date."
+    ],
+    "leadership_attention": {
+        "decision_or_escalation": "Escalate vendor resolution and confirm whether the launch runway remains achievable.",
+        "why_now": "Known work already consumes most of the four-week window."
+    },
+    "facts": [
+        "Development is 80% complete.",
+        "Four weeks remain before go-live.",
+        "Security review requires two weeks and has not started.",
+        "Vendor API resolution may take up to one week."
+    ],
+    "inferences": [
+        "The remaining schedule has limited contingency.",
+        "Parallel execution may be required to protect the launch date."
     ]
 }
 
 
 def analyze_with_groq(update: str) -> dict[str, Any]:
-    """Call Groq and parse the structured response."""
     if Groq is None:
         raise RuntimeError("groq package is not installed")
-
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         raise RuntimeError("GROQ_API_KEY is not configured")
@@ -96,41 +113,46 @@ def analyze_with_groq(update: str) -> dict[str, Any]:
             {"role": "user", "content": update[:12000]},
         ],
     )
-
-    content = response.choices[0].message.content
-    result = json.loads(content)
+    result = json.loads(response.choices[0].message.content)
     validate_result(result)
     return result
 
 
 def validate_result(result: dict[str, Any]) -> None:
-    """Perform lightweight schema validation before displaying model output."""
     required = {
-        "executive_summary",
-        "program_health",
-        "risks",
-        "blockers",
-        "dependencies",
-        "recommended_next_actions",
+        "executive_summary", "program_health", "delivery_intelligence", "risks",
+        "blockers", "dependencies", "recommended_next_actions",
+        "leadership_attention", "facts", "inferences"
     }
     missing = required - result.keys()
     if missing:
         raise ValueError(f"Model response is missing fields: {', '.join(sorted(missing))}")
-
-    status = result["program_health"].get("status")
-    if status not in {"Green", "Amber", "Red"}:
+    if result["program_health"].get("status") not in {"Green", "Amber", "Red"}:
         raise ValueError("Program health status must be Green, Amber, or Red")
 
 
 def render_result(result: dict[str, Any]) -> None:
     health = result["program_health"]
-    status = health["status"]
+    delivery = result["delivery_intelligence"]
+    leadership = result["leadership_attention"]
 
     st.subheader("Program Health")
-    st.metric("Status", status, health.get("reason", ""))
+    st.metric("Status", health["status"], health.get("reason", ""))
 
     st.subheader("Executive Summary")
     st.write(result["executive_summary"])
+
+    st.subheader("🧠 Delivery Intelligence")
+    d1, d2, d3 = st.columns(3)
+    with d1:
+        st.markdown("**Timeline**")
+        st.write(delivery.get("timeline_assessment", "Not established"))
+    with d2:
+        st.markdown("**Schedule Pressure**")
+        st.write(delivery.get("schedule_pressure", "Not established"))
+    with d3:
+        st.markdown("**Contingency**")
+        st.write(delivery.get("contingency_assessment", "Not established"))
 
     col1, col2 = st.columns(2)
     with col1:
@@ -147,6 +169,10 @@ def render_result(result: dict[str, Any]) -> None:
         for item in result["blockers"]:
             st.write(f"- {item}")
 
+        st.subheader("📌 Facts")
+        for item in result["facts"]:
+            st.write(f"- {item}")
+
     with col2:
         st.subheader("🔗 Dependencies")
         for item in result["dependencies"]:
@@ -160,6 +186,14 @@ def render_result(result: dict[str, Any]) -> None:
         for index, item in enumerate(result["recommended_next_actions"], start=1):
             st.write(f"{index}. {item}")
 
+        st.subheader("🧩 AI Inferences")
+        for item in result["inferences"]:
+            st.write(f"- {item}")
+
+    st.subheader("🚨 Leadership Attention")
+    st.markdown(f"**Decision / Escalation:** {leadership.get('decision_or_escalation', 'Not identified')}")
+    st.write(f"**Why now:** {leadership.get('why_now', 'Not identified')}")
+
 
 st.title("🧭 Program Intelligence Copilot")
 st.caption("AI-assisted program analysis for Technical Program Managers")
@@ -167,8 +201,8 @@ st.caption("AI-assisted program analysis for Technical Program Managers")
 with st.expander("What this demonstrates", expanded=False):
     st.write(
         "This portfolio application converts an unstructured program update into "
-        "health, risks, blockers, dependencies, and recommended actions. "
-        "The TPM remains accountable for validating the analysis and making decisions."
+        "program health, delivery intelligence, risks, blockers, dependencies, "
+        "actions, and leadership attention. The TPM remains accountable for validation and decisions."
     )
 
 sample = """Development is 80% complete with 4 weeks remaining before go-live.
@@ -177,18 +211,11 @@ A vendor API issue is unresolved and may take up to 1 week to fix.
 The team still needs to complete final development and integration testing."""
 
 update = st.text_area(
-    "Paste a program update",
-    value=sample,
-    height=180,
-    max_chars=12000,
-    help="Use synthetic or non-confidential information for this portfolio demo.",
+    "Paste a program update", value=sample, height=180, max_chars=12000,
+    help="Use synthetic or non-confidential information for this portfolio demo."
 )
 
-col_a, col_b = st.columns([1, 4])
-with col_a:
-    analyze = st.button("Analyze Program", type="primary", use_container_width=True)
-
-if analyze:
+if st.button("Analyze Program", type="primary", use_container_width=False):
     if not update.strip():
         st.warning("Enter a program update first.")
     else:
@@ -196,11 +223,10 @@ if analyze:
             try:
                 result = analyze_with_groq(update)
                 st.success("AI analysis complete")
-            except Exception as exc:
-                # Deliberately avoid displaying raw provider errors or credentials.
-                st.info("AI provider is not configured or returned an invalid response. Showing the deterministic demo analysis instead.")
+            except Exception:
+                st.info("AI analysis is unavailable. Showing the built-in sample analysis instead. The sample result is not based on the text you entered.")
                 result = DEMO_RESULT
         render_result(result)
 
 st.divider()
-st.caption("Portfolio V1 • Synthetic examples • Human review required for consequential decisions")
+st.caption("Portfolio MVP • Synthetic examples • Human review required for consequential decisions")

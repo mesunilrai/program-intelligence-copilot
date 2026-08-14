@@ -111,7 +111,7 @@ def _status_class(value: str) -> str:
     normalized = value.lower()
     if normalized in {"red", "high", "critical"}:
         return "red"
-    if normalized in {"amber", "medium", "moderate"}:
+    if any(term in normalized for term in ["amber", "medium", "moderate"]):
         return "amber"
     if normalized in {"green", "low"}:
         return "green"
@@ -133,7 +133,7 @@ def _pressure_width(value: str) -> int:
     normalized = value.lower()
     if normalized in {"high", "critical"}:
         return 90
-    if normalized in {"medium", "moderate", "amber"}:
+    if any(term in normalized for term in ["medium", "moderate", "amber"]):
         return 60
     if normalized in {"low", "green"}:
         return 30

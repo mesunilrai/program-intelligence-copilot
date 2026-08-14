@@ -38,6 +38,15 @@ reason about delivery timing:
 Do not claim exact critical-path timing unless the input supports it. If timing
 cannot be established, say so explicitly.
 
+IMPORTANT INFERENCE GUARDRAILS:
+- Do not create a risk, blocker, or dependency merely because something is
+  unknown. An unknown should be surfaced only when the input indicates a
+  meaningful uncertainty or exposure.
+- If the user explicitly says there are no known external blockers, do not
+  convert that statement into an "unknown external blockers" risk.
+- Do not contradict an explicit fact. If evidence is mixed, describe the
+  uncertainty rather than inventing a negative condition.
+
 Return valid JSON with exactly these keys:
 executive_summary, program_health, delivery_intelligence, risks, blockers,
 dependencies, recommended_next_actions, leadership_attention, facts,
@@ -104,7 +113,7 @@ def _status_class(value: str) -> str:
         return "red"
     if normalized in {"amber", "medium", "moderate"}:
         return "amber"
-    if normalized == "green":
+    if normalized in {"green", "low"}:
         return "green"
     return "neutral"
 

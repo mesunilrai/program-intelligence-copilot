@@ -13,6 +13,7 @@
 - [The TPM problem](#the-tpm-problem)
 - [How it works](#how-it-works)
 - [Key capabilities](#key-capabilities)
+- [Screenshots](#screenshots)
 - [Example](#example)
 - [AI approach and guardrails](#ai-approach-and-guardrails)
 - [Architecture](#architecture)
@@ -119,6 +120,22 @@ The output explicitly separates:
 - **AI Inferences** — conclusions derived from those facts
 
 This is intentional. The goal is decision support, not opaque automation.
+
+## Screenshots
+
+### Executive Snapshot
+
+Shows the executive-level program health, schedule pressure, contingency, delivery intelligence, and timeline pressure view.
+
+![Program Intelligence Copilot — Executive Snapshot](docs/executive-snapshot.png)
+
+### Decision Support
+
+Shows risks, dependencies, blockers, explicit facts, recommended next actions, AI inferences, and leadership attention.
+
+![Program Intelligence Copilot — Decision Support](docs/decision-support.png)
+
+> Screenshots use synthetic program information and are included to demonstrate the portfolio application's user experience.
 
 ## Example
 

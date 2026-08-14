@@ -131,13 +131,104 @@ def validate_result(result: dict[str, Any]) -> None:
         raise ValueError("Program health status must be Green, Amber, or Red")
 
 
+def _status_class(value: str) -> str:
+    normalized = value.lower()
+    if normalized == "red":
+        return "red"
+    if normalized in {"amber", "medium", "moderate"}:
+        return "amber"
+    if normalized in {"green", "low"}:
+        return "green"
+    if normalized in {"high", "critical"}:
+        return "red"
+    return "neutral"
+
+
+def render_snapshot(result: dict[str, Any]) -> None:
+    health = result["program_health"]
+    delivery = result["delivery_intelligence"]
+    blockers = len(result.get("blockers", []))
+    dependencies = len(result.get("dependencies", []))
+    status = health.get("status", "Unknown")
+    pressure = delivery.get("schedule_pressure", "Not established")
+    contingency = delivery.get("contingency_assessment", "Not established")
+
+    st.subheader("📊 Executive Snapshot")
+    cards = [
+        ("Program Health", status, _status_class(status)),
+        ("Schedule Pressure", pressure, _status_class(pressure)),
+        ("Contingency", contingency, _status_class("low" if any(x in contingency.lower() for x in ["low", "limited", "minimal", "none"]) else "neutral")),
+        ("Blockers", str(blockers), "red" if blockers else "green"),
+    ]
+    card_html = "<div class='snapshot-grid'>"
+    for label, value, css_class in cards:
+        card_html += f"<div class='snapshot-card'><div class='snapshot-label'>{label}</div><div class='snapshot-value {css_class}'>{value}</div></div>"
+    card_html += "</div>"
+    st.markdown(card_html, unsafe_allow_html=True)
+
+    st.markdown(
+        f"<div class='attention-strip'><strong>Dependencies:</strong> {dependencies} &nbsp; • &nbsp; "
+        f"<strong>Health rationale:</strong> {health.get('reason', 'Not established')}</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def render_timeline_visual(result: dict[str, Any]) -> None:
+    delivery = result["delivery_intelligence"]
+    facts = result.get("facts", [])
+    timeline_facts = [fact for fact in facts if any(
+        token in fact.lower() for token in ["day", "week", "month", "deadline", "launch", "go-live"]
+    )]
+
+    st.subheader("⏱️ Timeline Pressure")
+    if timeline_facts:
+        for fact in timeline_facts[:5]:
+            st.markdown(f"<div class='timeline-item'>• {fact}</div>", unsafe_allow_html=True)
+    else:
+        st.info("The input does not contain enough timing information for a meaningful timeline view.")
+
+    pressure = delivery.get("schedule_pressure", "Not established")
+    contingency = delivery.get("contingency_assessment", "Not established")
+    st.markdown(
+        f"<div class='pressure-bar'><div class='pressure-fill {_status_class(pressure)}'></div></div>"
+        f"<div class='pressure-caption'><strong>Schedule pressure:</strong> {pressure} &nbsp; • &nbsp; "
+        f"<strong>Contingency:</strong> {contingency}</div>",
+        unsafe_allow_html=True,
+    )
+
+
 def render_result(result: dict[str, Any]) -> None:
     health = result["program_health"]
     delivery = result["delivery_intelligence"]
     leadership = result["leadership_attention"]
 
-    st.subheader("Program Health")
-    st.metric("Status", health["status"], health.get("reason", ""))
+    st.markdown(
+        """<style>
+        .snapshot-grid {display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:8px 0 14px;}
+        .snapshot-card {padding:16px;border:1px solid rgba(128,128,128,.28);border-radius:10px;background:rgba(128,128,128,.07);min-height:82px;}
+        .snapshot-label {font-size:13px;opacity:.72;margin-bottom:8px;}
+        .snapshot-value {font-size:20px;font-weight:700;line-height:1.25;}
+        .snapshot-value.red {color:#ff6b6b;}.snapshot-value.amber {color:#f0ad4e;}.snapshot-value.green {color:#5cb85c;}.snapshot-value.neutral {color:inherit;}
+        .attention-strip {padding:12px 14px;border-left:4px solid rgba(128,128,128,.55);background:rgba(128,128,128,.07);border-radius:6px;margin-bottom:16px;}
+        .timeline-item {padding:7px 10px;margin:5px 0;border-left:3px solid rgba(128,128,128,.45);background:rgba(128,128,128,.05);border-radius:4px;}
+        .pressure-bar {height:10px;background:rgba(128,128,128,.18);border-radius:8px;overflow:hidden;margin-top:12px;}
+        .pressure-fill {height:100%;width:82%;border-radius:8px;}
+        .pressure-fill.red {background:#d9534f;}.pressure-fill.amber {background:#f0ad4e;}.pressure-fill.green {background:#5cb85c;}.pressure-fill.neutral {background:#888;}
+        .pressure-caption {font-size:13px;opacity:.8;margin:7px 0 16px;}
+        @media (max-width: 800px) {.snapshot-grid {grid-template-columns:repeat(2,1fr);}}
+        </style>""",
+        unsafe_allow_html=True,
+    )
+
+    render_snapshot(result)
+
+    status_class = _status_class(health["status"])
+    st.markdown(
+        f"<div class='attention-strip'><strong>Program Health: </strong>"
+        f"<span class='snapshot-value {status_class}'>{health['status']}</span>"
+        f"<br><span>{health.get('reason', 'Not established')}</span></div>",
+        unsafe_allow_html=True,
+    )
 
     st.subheader("Executive Summary")
     st.write(result["executive_summary"])
@@ -153,6 +244,8 @@ def render_result(result: dict[str, Any]) -> None:
     with d3:
         st.markdown("**Contingency**")
         st.write(delivery.get("contingency_assessment", "Not established"))
+
+    render_timeline_visual(result)
 
     col1, col2 = st.columns(2)
     with col1:
